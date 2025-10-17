@@ -8,7 +8,7 @@
 # YouTube: https://youtube.com/@dev_gagan
 # Created: 2025-01-11
 # Last Modified: 2025-01-11
-# Version: 2.0.5
+# Version: 2.0.5 (Premium Removed)
 # License: MIT License
 # ---------------------------------------------------
 
@@ -545,7 +545,7 @@ class SmartTelegramBot:
             raise
 
     async def handle_large_file_upload(self, file_path: str, sender: int, edit_msg, caption: str):
-        """Handle files larger than 2GB using pro client"""
+        """Handle files larger than 2GB using pro client - NO PREMIUM RESTRICTIONS"""
         if not self.pro_client:
             await edit_msg.edit('**❌ 4GB upload not available - Pro client not configured**')
             return
@@ -587,20 +587,8 @@ class SmartTelegramBot:
                     progress_args=progress_args
                 )
 
-            # Check if user is premium or free
-            free_check = 0
-            if 'chk_user' in globals():
-                free_check = await chk_user(sender, sender)
-
-            if free_check == 1:
-                # Free user - send with protection
-                reply_markup = InlineKeyboardMarkup([[
-                    InlineKeyboardButton("💎 Get Premium to Forward", url="https://t.me/kingofpatal")
-                ]])
-                await app.copy_message(target_chat_id, LOG_GROUP, result.id, protect_content=True, reply_markup=reply_markup)
-            else:
-                # Premium user - send normally
-                await app.copy_message(target_chat_id, LOG_GROUP, result.id)
+            # REMOVED PREMIUM CHECK - All users can forward freely
+            await app.copy_message(target_chat_id, LOG_GROUP, result.id)
 
         except Exception as e:
             print(f"Large file upload error: {e}")
@@ -666,22 +654,19 @@ class SmartTelegramBot:
                 await edit_msg.delete()
                 return
             
-            # Check file size and handle accordingly
+            # Check file size and handle accordingly - NO PREMIUM RESTRICTIONS
             upload_method = self.db.get_user_data(sender, "upload_method", "Pyrogram")
             
             if file_size > self.config.SIZE_LIMIT:
-                free_check = 0
-                if 'chk_user' in globals():
-                    free_check = await chk_user(chat_id, sender)
-                
-                if free_check == 1 or not self.pro_client:
-                    # Split file for free users or when pro client unavailable
-                    await edit_msg.delete()
-                    await self.file_ops.split_large_file(file_path, app, sender, target_chat_id, caption, topic_id)
+                # REMOVED PREMIUM CHECK - All users can use 4GB upload
+                if self.pro_client:
+                    # Use 4GB uploader for all users
+                    await self.handle_large_file_upload(file_path, sender, edit_msg, caption)
                     return
                 else:
-                    # Use 4GB uploader
-                    await self.handle_large_file_upload(file_path, sender, edit_msg, caption)
+                    # Split file if pro client unavailable
+                    await edit_msg.delete()
+                    await self.file_ops.split_large_file(file_path, app, sender, target_chat_id, caption, topic_id)
                     return
             
             # Regular upload
@@ -806,7 +791,7 @@ class SmartTelegramBot:
             await app.edit_message_text(sender, edit_id, f"❌ Error: {e}")
 
     async def _copy_public_message(self, app_client, userbot, sender: int, chat_id: str, message_id: int, edit_id: int):
-        """Handle copying from public channels/groups"""
+        """Handle copying from public channels/groups - NO PREMIUM RESTRICTIONS"""
         target_chat_str = self.user_chat_ids.get(sender, str(sender))
         target_chat_id, topic_id = self.parse_target_chat(target_chat_str)
         file_path = None
@@ -869,16 +854,13 @@ class SmartTelegramBot:
                 if media_type == "photo":
                     result = await app_client.send_photo(target_chat_id, file_path, caption=final_caption, reply_to_message_id=topic_id)
                 elif file_size > self.config.SIZE_LIMIT:
-                    free_check = 0
-                    if 'chk_user' in globals():
-                        free_check = await chk_user(chat_id, sender)
-                    
-                    if free_check == 1 or not self.pro_client:
-                        await edit_msg.delete()
-                        await self.file_ops.split_large_file(file_path, app_client, sender, target_chat_id, final_caption, topic_id)
+                    # REMOVED PREMIUM CHECK - All users can use 4GB upload
+                    if self.pro_client:
+                        await self.handle_large_file_upload(file_path, sender, edit_msg, final_caption)
                         return
                     else:
-                        await self.handle_large_file_upload(file_path, sender, edit_msg, final_caption)
+                        await edit_msg.delete()
+                        await self.file_ops.split_large_file(file_path, app_client, sender, target_chat_id, final_caption, topic_id)
                         return
                 else:
                     upload_method = self.db.get_user_data(sender, "upload_method", "Pyrogram")
@@ -984,7 +966,7 @@ async def callback_query_handler(event):
 
     elif data == b'addsession':
         telegram_bot.user_sessions[user_id] = 'addsession'
-        await event.respond("🔑 **Session Login**\n\nSend your Pyrogram V2 session string:")
+        await event.respond("🔐 **Session Login**\n\nSend your Pyrogram V2 session string:")
 
     # Settings configuration
     elif data == b'setchat':
